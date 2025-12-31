@@ -18,12 +18,12 @@ func TestTokenExpiry(t *testing.T) {
 		t.Error("Token should not be expired")
 	}
 
-	if token.IsExpiringSoon(2 * time.Hour) {
-		t.Error("Token should not be expiring soon for 2 hours")
+	if !token.IsExpiringSoon(2 * time.Hour) {
+		t.Error("Token should be expiring soon within 2 hours")
 	}
 
-	if !token.IsExpiringSoon(30 * time.Minute) {
-		t.Error("Token should be expiring soon for 30 minutes")
+	if token.IsExpiringSoon(30 * time.Minute) {
+		t.Error("Token should not be expiring soon within 30 minutes")
 	}
 
 	expiredToken := &Token{
