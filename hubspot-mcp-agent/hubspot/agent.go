@@ -1,0 +1,230 @@
+package hubspot
+
+import (
+"encoding/json"
+"fmt"
+
+"github.com/launch01/hubspot-mcp-agent/mcp"
+)
+
+// Agent represents a HubSpot MCP agent
+type Agent struct {
+client *mcp.Client
+}
+
+// Tool represents an MCP tool
+type Tool struct {
+Name        string `json:"name"`
+Description string `json:"description"`
+}
+
+// NewAgent creates a new HubSpot agent
+func NewAgent(accessToken string) (*Agent, error) {
+// Create MCP client that connects to HubSpot MCP server
+client, err := mcp.NewClient(
+"npx",
+[]string{"-y", "@hubspot/mcp-server"},
+map[string]string{
+"PRIVATE_APP_ACCESS_TOKEN": accessToken,
+},
+)
+if err != nil {
+return nil, fmt.Errorf("failed to create MCP client: %w", err)
+}
+
+// Initialize the connection
+if err := client.Initialize(map[string]interface{}{"name": "hubspot-mcp-agent", "version": "1.0.0"}); err != nil {
+return nil, fmt.Errorf("failed to initialize: %w", err)
+}
+
+return &Agent{
+client: client,
+}, nil
+}
+
+// Close closes the agent connection
+func (a *Agent) Close() error {
+return a.client.Close()
+}
+
+// ListAvailableTools lists all available MCP tools
+func (a *Agent) ListAvailableTools() ([]Tool, error) {
+resp, err := a.client.CallTool("tools/list", nil)
+if err != nil {
+return nil, err
+}
+
+var result struct {
+Tools []Tool `json:"tools"`
+}
+
+if err := json.Unmarshal(resp, &result); err != nil {
+return nil, fmt.Errorf("failed to parse tools: %w", err)
+}
+
+return result.Tools, nil
+}
+
+// SearchContacts searches for contacts using hubspot-search-objects
+func (a *Agent) SearchContacts(query string, limit int) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "contacts",
+"limit":      limit,
+}
+
+if query != "" {
+args["filterGroups"] = []map[string]interface{}{
+{
+"filters": []map[string]interface{}{
+{
+"propertyName": "email",
+"operator":     "CONTAINS_TOKEN",
+"value":        query,
+},
+},
+},
+}
+}
+
+return a.client.CallTool("hubspot-search-objects", args)
+}
+
+// GetContact retrieves a specific contact by ID using hubspot-batch-read-objects
+func (a *Agent) GetContact(contactID string) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "contacts",
+"inputs": []map[string]interface{}{
+{"id": contactID},
+},
+}
+
+return a.client.CallTool("hubspot-batch-read-objects", args)
+}
+
+// CreateContact creates a new contact using hubspot-batch-create-objects
+func (a *Agent) CreateContact(properties map[string]interface{}) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "contacts",
+"inputs": []map[string]interface{}{
+{"properties": properties},
+},
+}
+
+return a.client.CallTool("hubspot-batch-create-objects", args)
+}
+
+// UpdateContact updates an existing contact using hubspot-batch-update-objects
+func (a *Agent) UpdateContact(contactID string, properties map[string]interface{}) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "contacts",
+"inputs": []map[string]interface{}{
+{
+"id":         contactID,
+"properties": properties,
+},
+},
+}
+
+return a.client.CallTool("hubspot-batch-update-objects", args)
+}
+
+// SearchCompanies searches for companies using hubspot-search-objects
+func (a *Agent) SearchCompanies(query string, limit int) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "companies",
+"limit":      limit,
+}
+
+if query != "" {
+args["filterGroups"] = []map[string]interface{}{
+{
+"filters": []map[string]interface{}{
+{
+"propertyName": "name",
+"operator":     "CONTAINS_TOKEN",
+"value":        query,
+},
+},
+},
+}
+}
+
+return a.client.CallTool("hubspot-search-objects", args)
+}
+
+// CreateCompany creates a new company using hubspot-batch-create-objects
+func (a *Agent) CreateCompany(properties map[string]interface{}) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "companies",
+"inputs": []map[string]interface{}{
+{"properties": properties},
+},
+}
+
+return a.client.CallTool("hubspot-batch-create-objects", args)
+}
+
+// SearchDeals searches for deals using hubspot-search-objects
+func (a *Agent) SearchDeals(query string, limit int) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "deals",
+"limit":      limit,
+}
+
+if query != "" {
+args["filterGroups"] = []map[string]interface{}{
+{
+"filters": []map[string]interface{}{
+{
+"propertyName": "dealname",
+"operator":     "CONTAINS_TOKEN",
+"value":        query,
+},
+},
+},
+}
+}
+
+return a.client.CallTool("hubspot-search-objects", args)
+}
+
+// CreateDeal creates a new deal using hubspot-batch-create-objects
+func (a *Agent) CreateDeal(properties map[string]interface{}) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": "deals",
+"inputs": []map[string]interface{}{
+{"properties": properties},
+},
+}
+
+return a.client.CallTool("hubspot-batch-create-objects", args)
+}
+
+// GetUserDetails gets the authenticated user's details
+func (a *Agent) GetUserDetails() (json.RawMessage, error) {
+return a.client.CallTool("hubspot-get-user-details", nil)
+}
+
+// ListObjects lists objects of a specific type
+func (a *Agent) ListObjects(objectType string, limit int) (json.RawMessage, error) {
+args := map[string]interface{}{
+"objectType": objectType,
+"limit":      limit,
+}
+
+return a.client.CallTool("hubspot-list-objects", args)
+}
+
+// CreateEngagement creates a note or task engagement
+func (a *Agent) CreateEngagement(engagementType string, properties map[string]interface{}, associations []map[string]interface{}) (json.RawMessage, error) {
+args := map[string]interface{}{
+"engagementType": engagementType,
+"properties":     properties,
+}
+
+if len(associations) > 0 {
+args["associations"] = associations
+}
+
+return a.client.CallTool("hubspot-create-engagement", args)
+}

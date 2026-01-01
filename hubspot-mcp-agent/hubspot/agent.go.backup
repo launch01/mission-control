@@ -1,0 +1,184 @@
+package hubspot
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/launch01/hubspot-mcp-agent/mcp"
+)
+
+// Agent represents a HubSpot MCP agent
+type Agent struct {
+	client *mcp.Client
+}
+
+// NewAgent creates a new HubSpot agent
+func NewAgent(accessToken string) (*Agent, error) {
+	// Create MCP client that connects to HubSpot MCP server
+	client, err := mcp.NewClient(
+		"npx",
+		[]string{"-y", "@hubspot/mcp-server"},
+		map[string]string{
+			"HUBSPOT_ACCESS_TOKEN": accessToken,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create MCP client: %w", err)
+	}
+
+	// Initialize the MCP connection
+	if err := client.Initialize(map[string]interface{}{
+		"name":    "hubspot-go-agent",
+		"version": "1.0.0",
+	}); err != nil {
+		return nil, fmt.Errorf("failed to initialize MCP client: %w", err)
+	}
+
+	return &Agent{client: client}, nil
+}
+
+// ListAvailableTools returns all available tools from the HubSpot MCP server
+func (a *Agent) ListAvailableTools() ([]Tool, error) {
+	result, err := a.client.ListTools()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list tools: %w", err)
+	}
+
+	var response struct {
+		Tools []Tool `json:"tools"`
+	}
+
+	if err := json.Unmarshal(result, &response); err != nil {
+		return nil, fmt.Errorf("failed to parse tools response: %w", err)
+	}
+
+	return response.Tools, nil
+}
+
+// Tool represents an MCP tool
+type Tool struct {
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	InputSchema map[string]interface{} `json:"inputSchema"`
+}
+
+// SearchContacts searches for contacts in HubSpot
+func (a *Agent) SearchContacts(query string, limit int) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"query": query,
+		"limit": limit,
+	}
+
+	result, err := a.client.CallTool("search_contacts", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search contacts: %w", err)
+	}
+
+	return result, nil
+}
+
+// GetContact retrieves a contact by ID
+func (a *Agent) GetContact(contactID string) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"contactId": contactID,
+	}
+
+	result, err := a.client.CallTool("get_contact", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contact: %w", err)
+	}
+
+	return result, nil
+}
+
+// CreateContact creates a new contact in HubSpot
+func (a *Agent) CreateContact(properties map[string]interface{}) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"properties": properties,
+	}
+
+	result, err := a.client.CallTool("create_contact", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contact: %w", err)
+	}
+
+	return result, nil
+}
+
+// UpdateContact updates an existing contact
+func (a *Agent) UpdateContact(contactID string, properties map[string]interface{}) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"contactId":  contactID,
+		"properties": properties,
+	}
+
+	result, err := a.client.CallTool("update_contact", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update contact: %w", err)
+	}
+
+	return result, nil
+}
+
+// SearchDeals searches for deals in HubSpot
+func (a *Agent) SearchDeals(query string, limit int) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"query": query,
+		"limit": limit,
+	}
+
+	result, err := a.client.CallTool("search_deals", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search deals: %w", err)
+	}
+
+	return result, nil
+}
+
+// CreateDeal creates a new deal in HubSpot
+func (a *Agent) CreateDeal(properties map[string]interface{}) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"properties": properties,
+	}
+
+	result, err := a.client.CallTool("create_deal", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create deal: %w", err)
+	}
+
+	return result, nil
+}
+
+// SearchCompanies searches for companies in HubSpot
+func (a *Agent) SearchCompanies(query string, limit int) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"query": query,
+		"limit": limit,
+	}
+
+	result, err := a.client.CallTool("search_companies", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search companies: %w", err)
+	}
+
+	return result, nil
+}
+
+// CreateCompany creates a new company in HubSpot
+func (a *Agent) CreateCompany(properties map[string]interface{}) (json.RawMessage, error) {
+	args := map[string]interface{}{
+		"properties": properties,
+	}
+
+	result, err := a.client.CallTool("create_company", args)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create company: %w", err)
+	}
+
+	return result, nil
+}
+
+// Close closes the agent and underlying MCP client
+func (a *Agent) Close() error {
+	return a.client.Close()
+}
